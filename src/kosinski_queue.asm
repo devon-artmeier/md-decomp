@@ -151,11 +151,11 @@ ProcessKosinskiQueue:
 	
 	move.l	kos_bookmark,d0					; Has a bookmark been made?
 	beq.s	.NoBookmark					; If not, branch
+	clr.l	kos_bookmark					; Mark bookmark as restored
 
-	move.l	d0,-(sp)					; Restore bookmark
-	clr.l	kos_bookmark
-	movem.l	kos_bookmark+6,d0-d4/a0-a3
-	move.w	kos_bookmark+4,sr
+	move.l	d0,-(sp)					; Restore program counter
+	movem.l	kos_bookmark+6,d0-d4/a0-a3			; Restore registers
+	move.w	kos_bookmark+4,ccr				; Restore condition codes
 	rts
 
 .NoBookmark:
@@ -380,7 +380,7 @@ QueuedKosDecompEnd:
 ; ------------------------------------------------------------------------------
 
 SetKosinskiBookmark:
-	move.w	sr,kos_bookmark+4				; Bookmark status register
+	move.w	sr,kos_bookmark+4				; Bookmark condition codes
 	movem.l	d0-d4/a0-a3,kos_bookmark+6			; Bookmark registers
 
 	movem.l	(sp)+,d0-d4/a0-a3				; Restore registers
