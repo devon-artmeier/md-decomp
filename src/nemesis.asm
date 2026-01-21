@@ -1,5 +1,5 @@
 ; ------------------------------------------------------------------------------
-; Copyright (c) 2025 Devon Artmeier
+; Copyright (c) 2025-2026 Devon Artmeier
 ;
 ; Permission to use, copy, modify, and/or distribute this software
 ; for any purpose with or without fee is hereby granted.
@@ -14,8 +14,7 @@
 ; PERFORMANCE OF THIS SOFTWARE.
 ; ------------------------------------------------------------------------------
 
-NEM_CODE_TABLE		equ $FFFFAA00				; Code table buffer ($200 bytes)
-NEM_VDP_DATA		equ $C00000				; VDP data port
+nemesis_code_table	equ $FFFFAA00				; Code table buffer ($200 bytes)
 
 ; ------------------------------------------------------------------------------
 ; Decompress Nemesis compressed graphics data
@@ -25,33 +24,32 @@ NEM_VDP_DATA		equ $C00000				; VDP data port
 ; When writing to VDP memory, set the VDP command first before calling.
 ; Requires $200 bytes allocated in RAM for the code table.
 ; ------------------------------------------------------------------------------
-; PARAMETERS:
+; ARGUMENTS:
 ;	a0.l - Pointer to source graphics data
 ;	a4.l - Pointer to destination buffer (RAM write only)
 ; ------------------------------------------------------------------------------
 
-NemDecToRam:
+DecompNemesis:
 	movem.l	d0-a5,-(sp)					; Save registers
-	lea	WriteNemRowToRam(pc),a3				; Write to RAM
-	bsr.s	NemDecMain					; Decompress data
+	lea	WriteNemesisRow(pc),a3				; Write to RAM
+	bsr.s	DecompNemesisMain				; Decompress data
 	movem.l	(sp)+,d0-a5					; Restore registers
 	rts
 
 ; ------------------------------------------------------------------------------
 
-NemDec:
-NemDecToVram:
+DecompNemesisVram:
 	movem.l	d0-a5,-(sp)					; Save registers
-	lea	WriteNemRowToVram(pc),a3			; Write to VRAM
-	lea	NEM_VDP_DATA,a4					; VDP data port
-	bsr.s	NemDecMain					; Decompress data
+	lea	WriteNemesisRowVram(pc),a3			; Write to VRAM
+	lea	$C00000,a4					; VDP data port
+	bsr.s	DecompNemesisMain				; Decompress data
 	movem.l	(sp)+,d0-a5					; Restore registers
 	rts
 	
 ; ------------------------------------------------------------------------------
 
-NemDecMain:
-	lea	NEM_CODE_TABLE,a1				; Code table buffer
+DecompNemesisMain:
+	lea	nemesis_code_table,a1				; Code table buffer
 	
 	move.w	(a0)+,d0					; Get number of tiles
 	bpl.s	.NotXor						; If XOR mode is not set, branch
@@ -61,7 +59,7 @@ NemDecMain:
 	lsl.w	#3,d0						; Get number of 8 pixel rows
 	movea.w	d0,a5
 	
-	bsr.w	BuildNemCodeTable				; Build code table
+	bsr.w	BuildNemesisCodeTable				; Build code table
 	
 	moveq	#8,d3						; Reset pixel count
 	moveq	#0,d2						; Clear XOR pixel row data
@@ -74,9 +72,9 @@ NemDecMain:
 
 ; ------------------------------------------------------------------------------
 
-GetNemCode:
+GetNemesisCode:
 	cmpi.w	#%1111110000000000,d5				; Are the high 6 bits set in the code?
-	bcc.s	GetNemInlinePixel				; If so, branch
+	bcc.s	GetNemesisInline				; If so, branch
 	
 	moveq	#0,d1						; Get code table entry index
 	move.w	d5,-(sp)
@@ -90,7 +88,7 @@ GetNemCode:
 	
 	move.b	1(a1,d1.w),d1					; Get pixel value and repeat count
 	
-StartNemPixelCopy:
+StartNemesisPixelCopy:
 	cmpi.w	#8,d6						; Should we get another byte?
 	bhi.s	.GetPixel					; If not, branch
 
@@ -109,29 +107,29 @@ StartNemPixelCopy:
 	andi.w	#$70,d0						; Get repeat count
 	lsr.w	#4,d0
 	
-WriteNemPixel:
+WriteNemesisPixel:
 	lsl.l	#4,d4						; Write pixel
 	or.b	d1,d4
 	
 	subq.w	#1,d3						; Decrement number of pixels in row
 	beq.s	.WriteRow					; If the row is fully written, branch
 
-	dbf	d0,WriteNemPixel				; Loop until repeated pixels are written
-	bra.s	GetNemCode					; Process next code
+	dbf	d0,WriteNemesisPixel				; Loop until repeated pixels are written
+	bra.s	GetNemesisCode					; Process next code
 	
 .WriteRow:
 	jmp	(a3)						; Write pixel row to memory
 
-NewNemPixelRow:
+NewNemesisRow:
 	moveq	#8,d3						; Reset pixel count
 	moveq	#0,d4						; Reset pixel row data
 
-	dbf	d0,WriteNemPixel				; Loop until repeated pixels are written
-	bra.s	GetNemCode					; Process next code
+	dbf	d0,WriteNemesisPixel				; Loop until repeated pixels are written
+	bra.s	GetNemesisCode					; Process next code
 
 ; ------------------------------------------------------------------------------
 
-GetNemInlinePixel:
+GetNemesisInline:
 	subq.w	#6,d6						; Advance bitstream past code
 	rol.w	#6,d5
 
@@ -152,45 +150,45 @@ GetNemInlinePixel:
 	rol.w	#7,d5
 	
 	move.w	d5,d1						; Start copying pixel from inline data
-	bra.s	StartNemPixelCopy
+	bra.s	StartNemesisPixelCopy
 	
 ; ------------------------------------------------------------------------------
 
-WriteNemRowToVram:
+WriteNemesisRowVram:
 	move.l	d4,(a4)						; Write pixel row
 	subq.w	#1,a5						; Decrement number of pixel rows left
 	move.w	a5,d7
-	bne.s	NewNemPixelRow					; If there's still pixel rows to write, branch
+	bne.s	NewNemesisRow					; If there's still pixel rows to write, branch
 	rts
 
-WriteNemXorRowToVram:
+WriteNemesisRowVramXor:
 	eor.l	d4,d2						; XOR previous pixel row with current pixel row
 	move.l	d2,(a4)						; Write pixel row
 	subq.w	#1,a5						; Decrement number of pixel rows left
 	move.w	a5,d7
-	bne.s	NewNemPixelRow					; If there's still pixel rows to write, branch
+	bne.s	NewNemesisRow					; If there's still pixel rows to write, branch
 	rts
 	
 ; ------------------------------------------------------------------------------
 
-WriteNemRowToRam:
+WriteNemesisRow:
 	move.l	d4,(a4)+					; Write pixel row
 	subq.w	#1,a5						; Decrement number of pixel rows left
 	move.w	a5,d7
-	bne.s	NewNemPixelRow					; If there's still pixel rows to write, branch
+	bne.s	NewNemesisRow					; If there's still pixel rows to write, branch
 	rts
 
-WriteNemXorRowToRam:
+WriteNemesisRowXor:
 	eor.l	d4,d2						; XOR previous pixel row with current pixel row
 	move.l	d2,(a4)+					; Write pixel row
 	subq.w	#1,a5						; Decrement number of pixel rows left
 	move.w	a5,d7
-	bne.s	NewNemPixelRow					; If there's still pixel rows to write, branch
+	bne.s	NewNemesisRow					; If there's still pixel rows to write, branch
 	rts
 	
 ; ------------------------------------------------------------------------------
 
-BuildNemCodeTable:
+BuildNemesisCodeTable:
 	move.b	(a0)+,d0					; Get byte
 	bpl.s	.NotPaletteIndex				; If it's not a pixel value, branch
 	
@@ -198,7 +196,7 @@ BuildNemCodeTable:
 	beq.s	.End						; If so, branch
 	
 	move.b	d0,d2						; Get pixel value
-	bra.s	BuildNemCodeTable				; Get next byte
+	bra.s	BuildNemesisCodeTable				; Get next byte
 
 .NotPaletteIndex:
 	moveq	#$F,d1						; Mask out pixel value and code length
@@ -223,7 +221,7 @@ BuildNemCodeTable:
 	move.w	d2,(a2)+					; Store code table entry
 	dbf	d1,.StoreCode					; Loop until finished
 	
-	bra.s	BuildNemCodeTable				; Get next byte
+	bra.s	BuildNemesisCodeTable				; Get next byte
 		
 .End:
 	rts

@@ -7,3 +7,8 @@ Custom written implementations of decompression functions for various algorithms
 * Nemesis
 * Enigma
 * Kosinski
+
+## Additions
+
+* Kosinski queue
+  * Supports regular and moduled Kosinski data

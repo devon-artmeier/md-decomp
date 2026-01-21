@@ -1,5 +1,5 @@
 ; ------------------------------------------------------------------------------
-; Copyright (c) 2025 Devon Artmeier
+; Copyright (c) 2025-2026 Devon Artmeier
 ;
 ; Permission to use, copy, modify, and/or distribute this software
 ; for any purpose with or without fee is hereby granted.
@@ -19,7 +19,7 @@
 ; ------------------------------------------------------------------------------
 ; Format details: https://segaretro.org/Enigma_compression
 ; ------------------------------------------------------------------------------
-; PARAMETERS:
+; ARGUMENTS:
 ;	a0.l - Pointer to source tilemap data
 ;	a1.l - Pointer to destination buffer
 ;	d0.w - Base tile properties
@@ -29,7 +29,7 @@
 ;	a1.l - Pointer to end of destination buffer
 ; ------------------------------------------------------------------------------
 
-EniDec:
+DecompEnigma:
 	movem.l	d0-d7/a2-a5,-(sp)				; Save registers
 	movea.w	d0,a2						; Save base tile properties
 
@@ -48,7 +48,7 @@ EniDec:
 
 ; ------------------------------------------------------------------------------
 
-GetEniCode:
+GetEnigmaCode:
 	subq.w	#1,d6						; Does the next code involve using an inline tile?
 	rol.w	#1,d5
 	bcs.s	.InlineTileCode					; If so, branch
@@ -93,7 +93,7 @@ GetEniCode:
 	addq.w	#8,d6
 
 .GoToNextCode:
-	bra.s	GetEniCode					; Process next code
+	bra.s	GetEnigmaCode					; Process next code
 
 .InlineTileCode:
 	subq.w	#2,d6						; Get code
@@ -122,30 +122,30 @@ GetEniCode:
 	add.w	d1,d1						; Handle code
 	jsr	.InlineCodes(pc,d1.w)
 	
-	bra.s	GetEniCode					; Process next code
+	bra.s	GetEnigmaCode					; Process next code
 
 ; ------------------------------------------------------------------------------
 
 .InlineCodes:
-	bra.s	EniInlineMode00
-	bra.s	EniInlineMode01
-	bra.s	EniInlineMode10
+	bra.s	EnigmaInlineMode00
+	bra.s	EnigmaInlineMode01
+	bra.s	EnigmaInlineMode10
 	
 ; ------------------------------------------------------------------------------
 
-EniInlineMode11:
+EnigmaInlineMode11:
 	cmpi.w	#$F,d0						; Are we at the end?
-	beq.s	EniDecDone					; If so, branch
+	beq.s	EnigmaDone					; If so, branch
 
 .Copy:
-	bsr.s	GetEniInlineTile				; Get tile
+	bsr.s	GetEnigmaInline					; Get tile
 	move.w	d1,(a1)+					; Store tile
 	dbf	d0,.Copy					; Loop until enough is copied
 	rts
 	
 ; ------------------------------------------------------------------------------
 
-EniDecDone:
+EnigmaDone:
 	addq.w	#4,sp						; Discard return address
 	
 	subq.w	#1,a0						; Discard trailing byte
@@ -159,8 +159,8 @@ EniDecDone:
 
 ; ------------------------------------------------------------------------------
 
-EniInlineMode00:
-	bsr.s	GetEniInlineTile				; Get tile
+EnigmaInlineMode00:
+	bsr.s	GetEnigmaInline					; Get tile
 
 .Copy:
 	move.w	d1,(a1)+					; Copy tile
@@ -169,8 +169,8 @@ EniInlineMode00:
 	
 ; ------------------------------------------------------------------------------
 
-EniInlineMode01:
-	bsr.s	GetEniInlineTile				; Get tile
+EnigmaInlineMode01:
+	bsr.s	GetEnigmaInline					; Get tile
 
 .Copy:
 	move.w	d1,(a1)+					; Copy tile
@@ -180,8 +180,8 @@ EniInlineMode01:
 	
 ; ------------------------------------------------------------------------------
 
-EniInlineMode10:
-	bsr.s	GetEniInlineTile				; Get tile
+EnigmaInlineMode10:
+	bsr.s	GetEnigmaInline					; Get tile
 
 .Copy:
 	move.w	d1,(a1)+					; Copy tile
@@ -191,7 +191,7 @@ EniInlineMode10:
 
 ; ------------------------------------------------------------------------------
 
-GetEniInlineTile:
+GetEnigmaInline:
 	move.w	a3,d7						; Get tile flags
 	move.w	a2,d3						; Get base tile properties
 

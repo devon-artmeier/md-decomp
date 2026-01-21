@@ -1,5 +1,5 @@
 ; ------------------------------------------------------------------------------
-; Copyright (c) 2025 Devon Artmeier
+; Copyright (c) 2025-2026 Devon Artmeier
 ;
 ; Permission to use, copy, modify, and/or distribute this software
 ; for any purpose with or without fee is hereby granted.
@@ -19,7 +19,7 @@
 ; ------------------------------------------------------------------------------
 ; Format details: https://segaretro.org/Kosinski_compression
 ; ------------------------------------------------------------------------------
-; PARAMETERS:
+; ARGUMENTS:
 ;	a0.l - Pointer to source data
 ;	a1.l - Pointer to destination buffer
 ; ------------------------------------------------------------------------------
@@ -28,7 +28,7 @@
 ;	a1.l - Pointer to end of destination buffer
 ; ------------------------------------------------------------------------------
 
-KosDec:
+DecompKosinski:
 	movem.l	d0-d3/a2,-(sp)					; Save registers
 	
 	move.b	(a0)+,-(sp)					; Read from data stream
@@ -39,14 +39,14 @@ KosDec:
 
 ; ------------------------------------------------------------------------------
 
-GetKosCode:
+.GetCode:
 	lsr.w	#1,d1						; Get code
-	bcc.s	KosCode0x					; If it's 0, branch
+	bcc.s	.Code0x						; If it's 0, branch
 
 ; ------------------------------------------------------------------------------
 
-KosCode1:
-	dbf	d0,.NoNewDesc					; Decrement bits left to process
+.Code1:
+	dbf	d0,.Code1NoNewDesc				; Decrement bits left to process
 
 	move.b	(a0)+,-(sp)					; Read from data stream
 	move.b	(a0)+,-(sp)
@@ -54,14 +54,14 @@ KosCode1:
 	move.b	(sp)+,d1
 	moveq	#16-1,d0					; 16 bits to process
 
-.NoNewDesc:
+.Code1NoNewDesc:
 	move.b	(a0)+,(a1)+					; Copy uncompressed byte
-	bra.s	GetKosCode					; Process next code
+	bra.s	.GetCode					; Process next code
 
 ; ------------------------------------------------------------------------------
 
-KosCode0x:
-	dbf	d0,.NoNewDesc					; Decrement bits left to process
+.Code0x:
+	dbf	d0,.Code0xNoNewDesc				; Decrement bits left to process
 
 	move.b	(a0)+,-(sp)					; Read from data stream
 	move.b	(a0)+,-(sp)
@@ -69,16 +69,16 @@ KosCode0x:
 	move.b	(sp)+,d1
 	moveq	#16-1,d0					; 16 bits to process
 
-.NoNewDesc:
+.Code0xNoNewDesc:
 	moveq	#$FFFFFFFF,d2					; Copy offsets are always negative
 	moveq	#0,d3						; Reset copy counter
 
 	lsr.w	#1,d1						; Get 2nd code bit
-	bcs.s	KosCode01					; If the full code is 01, branch
+	bcs.s	.Code01						; If the full code is 01, branch
 
 ; ------------------------------------------------------------------------------
 
-KosCode00:
+.Code00:
 	dbf	d0,.GetCopyLength1				; Decrement bits left to process
 
 	move.b	(a0)+,-(sp)					; Read from data stream
@@ -114,20 +114,20 @@ KosCode00:
 
 ; ------------------------------------------------------------------------------
 
-KosDecCopy:
+.Copy:
 	lea	(a1,d2.w),a2					; Get copy address
 	move.b	(a2)+,(a1)+					; Copy a byte
 
-.Copy:
+.CopyLoop:
 	move.b	(a2)+,(a1)+					; Copy a byte
-	dbf	d3,.Copy					; Loop until bytes are copied
+	dbf	d3,.CopyLoop					; Loop until bytes are copied
 
-	bra.w	GetKosCode					; Process next code
+	bra.w	.GetCode					; Process next code
 
 ; ------------------------------------------------------------------------------
 
-KosCode01:
-	dbf	d0,.NoNewDesc					; Decrement bits left to process
+.Code01:
+	dbf	d0,.Code01NoNewDesc				; Decrement bits left to process
 
 	move.b	(a0)+,-(sp)					; Read from data stream
 	move.b	(a0)+,-(sp)
@@ -135,7 +135,7 @@ KosCode01:
 	move.b	(sp)+,d1
 	moveq	#16-1,d0					; 16 bits to process
 
-.NoNewDesc:
+.Code01NoNewDesc:
 	move.b	(a0)+,-(sp)					; Get copy offset
 	move.b	(a0)+,d2
 	move.b	d2,d3
@@ -143,17 +143,17 @@ KosCode01:
 	move.b	(sp)+,d2
 
 	andi.w	#7,d3						; Get 3-bit copy count
-	bne.s	KosDecCopy					; If this is a 3-bit copy count, branch
+	bne.s	.Copy						; If this is a 3-bit copy count, branch
 
 	move.b	(a0)+,d3					; Get 8-bit copy count
 	beq.s	.End						; If it's 0, we are done decompressing
 	subq.b	#1,d3						; Is it 1?
-	bne.s	KosDecCopy					; If not, start copying
+	bne.s	.Copy						; If not, start copying
 	
-	bra.w	GetKosCode					; Process next code
+	bra.w	.GetCode					; Process next code
 
 .End:
 	movem.l	(sp)+,d0-d3/a2					; Restore registers
 	rts
-	
+
 ; ------------------------------------------------------------------------------
