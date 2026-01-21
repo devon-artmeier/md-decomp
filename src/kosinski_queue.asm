@@ -332,7 +332,7 @@ QueuedKosDecompEnd:
 	add.l	a1,d3
 	move.l	d3,(a0,d0.w)
 
-	move.w	sr,-(sp)					; Save interrupts
+	move.w	sr,-(sp)					; Save status register
 	move.w	#$2700,sr					; Stop interrupts
 
 	lea	kos_moduled_dma,a1				; Set up DMA registers
@@ -355,7 +355,7 @@ QueuedKosDecompEnd:
 	ori.l	#$40000080,d1
 	move.l	d1,(a1)+
 
-	move.w	(sp)+,sr					; Restore interrupts
+	move.w	(sp)+,sr					; Restore status register
 
 	add.w	d2,4(a0,d0.w)					; Increment VRAM address
 	sub.w	d2,kos_moduled_left				; Decrement bytes left
