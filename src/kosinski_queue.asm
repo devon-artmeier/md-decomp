@@ -17,7 +17,7 @@
 KOS_QUEUE_COUNT		equ $20					; Queue slot count
 KOS_QUEUE_LENGTH	equ KOS_QUEUE_COUNT*8			; Queue length
 
-kos_variables		equ $FFFF9600				; Variables
+kos_variables		equ $FFFF8000				; Variables
 kos_stack		equ kos_variables			; Stack (2 bytes)
 kos_bookmark		equ kos_stack+2				; Bookmark ($2A bytes)
 kos_moduled_left	equ kos_bookmark+$2A			; Moduled graphics bytes left (2 bytes)
@@ -32,7 +32,7 @@ kos_queue		equ kos_moduled_count+2			; Queue (KOS_QUEUE_LENGTH bytes)
 kos_queue_end		equ kos_queue+KOS_QUEUE_LENGTH		; End of queue
 kos_variables_end	equ kos_queue_end			; End of variables
 
-kos_moduled_buffer	equ $FFFF9800				; Decompression buffer ($1000 bytes)
+kos_moduled_buffer	equ $FFFF9000				; Decompression buffer ($1000 bytes)
 
 ; ------------------------------------------------------------------------------
 ; Initialize Kosinski queue
@@ -61,7 +61,7 @@ InitKosinskiQueue:
 ; ------------------------------------------------------------------------------
 
 QueueKosinski:
-	movem.l	a0-a1/d0,-(sp)					; Save registers
+	movem.l	a0/d0,-(sp)					; Save registers
 
 	cmpi.b	#KOS_QUEUE_COUNT,kos_total_count		; Is the queue full?
 	bcc.s	.End						; If so, branch
@@ -84,7 +84,7 @@ QueueKosinski:
 	move.w	d0,kos_queue_write				; Update write slot
 
 .End:
-	movem.l	(sp)+,a0-a1/d0					; Restore registers
+	movem.l	(sp)+,a0/d0					; Restore registers
 	rts
 
 ; ------------------------------------------------------------------------------
@@ -96,7 +96,7 @@ QueueKosinski:
 ; ------------------------------------------------------------------------------
 
 QueueKosModuled:
-	movem.l	a0-a1/d0,-(sp)					; Save registers
+	movem.l	a0/d0,-(sp)					; Save registers
 	
 	cmpi.b	#KOS_QUEUE_COUNT,kos_total_count		; Is the queue full?
 	bcc.s	.End						; If so, branch
@@ -119,7 +119,7 @@ QueueKosModuled:
 	move.w	d0,kos_queue_write				; Update write slot
 
 .End:
-	movem.l	(sp)+,a0-a1/d0					; Restore registers
+	movem.l	(sp)+,a0/d0					; Restore registers
 	rts
 
 ; ------------------------------------------------------------------------------
@@ -149,14 +149,14 @@ FlushKosinskiQueue:
 ProcessKosinskiQueue:
 	movem.l	d0-d4/a0-a3,-(sp)				; Save registers
 	
-	tst.l	kos_bookmark					; Has a bookmark been made?
+	move.l	kos_bookmark,d0					; Has a bookmark been made?
 	beq.s	.NoBookmark					; If not, branch
 
-	move.l	kos_bookmark,-(sp)				; Restore bookmark
-	move.w	kos_bookmark+4,-(sp)
-	movem.l	kos_bookmark+6,d0-d4/a0-a3
+	move.l	d0,-(sp)					; Restore bookmark
 	clr.l	kos_bookmark
-	rte
+	movem.l	kos_bookmark+6,d0-d4/a0-a3
+	move.w	kos_bookmark+4,sr
+	rts
 
 .NoBookmark:
 	lea	kos_queue,a0					; Get queue
