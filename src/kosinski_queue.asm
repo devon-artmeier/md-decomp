@@ -333,7 +333,7 @@ QueuedKosDecompEnd:
 	move.l	d3,(a0,d0.w)
 
 	move.w	sr,-(sp)					; Save status register
-	move.w	#$2700,sr					; Stop interrupts
+	move.w	#$2700,sr					; Disable interrupts
 
 	lea	kos_moduled_dma,a1				; Set up DMA registers
 	move.l	#$94009300,(a1)+
