@@ -148,7 +148,8 @@ FlushKosinskiQueue:
 
 ProcessKosinskiQueue:
 	movem.l	d0-d4/a0-a3,-(sp)				; Save registers
-	
+	move.w	sr,-(sp)
+		
 	move.l	kos_bookmark,d0					; Has a bookmark been made?
 	beq.s	.NoBookmark					; If not, branch
 	clr.l	kos_bookmark					; Mark bookmark as restored
@@ -185,7 +186,8 @@ ProcessKosinskiQueue:
 	bne.s	.NewModuled					; If so, branch
 
 .End:
-	movem.l	(sp)+,d0-d4/a0-a3				; Restore registers
+	move.w	(sp)+,sr					; Restore registers
+	movem.l	(sp)+,d0-d4/a0-a3
 	rts
 
 .NewModuled:
@@ -332,6 +334,8 @@ QueuedKosDecompEnd:
 	add.l	a1,d3
 	move.l	d3,(a0,d0.w)
 
+	move.w	#$2700,sr					; Stop interrupts
+
 	lea	kos_moduled_dma,a1				; Set up DMA registers
 	move.l	#$94009300,(a1)+
 	move.w	#$9700,(a1)+
@@ -351,6 +355,8 @@ QueuedKosDecompEnd:
 	swap	d1
 	ori.l	#$40000080,d1
 	move.l	d1,(a1)+
+
+	move.w	(sp),sr						; Restore interrupts
 
 	add.w	d2,4(a0,d0.w)					; Increment VRAM address
 	sub.w	d2,kos_moduled_left				; Decrement bytes left
@@ -372,7 +378,8 @@ QueuedKosDecompEnd:
 	move.w	d0,kos_queue_read				; Update read slot
 
 .End:
-	movem.l	(sp)+,d0-d4/a0-a3				; Restore registers
+	move.w	(sp)+,sr					; Restore registers
+	movem.l	(sp)+,d0-d4/a0-a3
 	rts
 	
 ; ------------------------------------------------------------------------------
@@ -383,7 +390,8 @@ SetKosinskiBookmark:
 	move.w	sr,kos_bookmark+4				; Bookmark condition codes
 	movem.l	d0-d4/a0-a3,kos_bookmark+6			; Bookmark registers
 
-	movem.l	(sp)+,d0-d4/a0-a3				; Restore registers
+	move.w	(sp)+,sr					; Restore registers
+	movem.l	(sp)+,d0-d4/a0-a3
 	rts
 
 ; ------------------------------------------------------------------------------
