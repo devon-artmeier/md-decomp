@@ -10,5 +10,4 @@ Custom written implementations of decompression functions for various algorithms
 
 ## Additions
 
-* Kosinski queue
-  * Supports regular and moduled Kosinski data
+* Kosinski queue (supports regular and moduled data)
